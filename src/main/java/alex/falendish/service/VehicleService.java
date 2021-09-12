@@ -12,9 +12,7 @@ public interface VehicleService {
 
     Collection<Vehicle> findAvailableVehicles(VehicleCategoryType categoryType, VehicleType vehicleType, int seats);
 
-    Collection<Long> reserveVehicles(Collection<Vehicle> vehicles, long orderId, BigDecimal price);
-
-    void tryToCancelUnconfirmedBookedVehicles(Collection<Long> reservedVehicleIds);
+    void reserveVehicles(Collection<Vehicle> vehicles, long orderId, BigDecimal price);
 
     void updateStatusByIds(VehicleStatus pending, Collection<Long> boundVehicleIds);
 
@@ -23,4 +21,6 @@ public interface VehicleService {
     void sendBookingRequestToVehicles(Long bookingId);
 
     Collection<Vehicle> findAllByIds(Collection<Long> vehicleIds);
+
+    void activateBillingOrders(Long bookingId);
 }

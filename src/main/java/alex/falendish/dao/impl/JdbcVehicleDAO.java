@@ -9,9 +9,7 @@ import main.java.alex.falendish.utils.VehicleStatus;
 import main.java.alex.falendish.utils.VehicleType;
 
 import java.sql.*;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 public class JdbcVehicleDAO implements VehicleDAO {
 
@@ -76,7 +74,7 @@ public class JdbcVehicleDAO implements VehicleDAO {
     }
 
     @Override
-    public void tryToCancelUnconfirmedBookedVehicles(Collection<Long> reservedVehicleIds) {
+    public void updateStatusByIds(VehicleStatus status, Collection<Long> reservedVehicleIds) {
         if (reservedVehicleIds.isEmpty()) {
             return;
         }
@@ -85,7 +83,7 @@ public class JdbcVehicleDAO implements VehicleDAO {
         try {
             PreparedStatement ps = connection.prepareStatement(sql);
             Array array = ps.getConnection().createArrayOf("BIGINT", reservedVehicleIds.toArray());
-            ps.setString(1, VehicleStatus.IDLE.name());
+            ps.setString(1, status.name());
             ps.setArray(2, array);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -93,8 +91,45 @@ public class JdbcVehicleDAO implements VehicleDAO {
         } finally {
             connectionPool.releaseConnection(connection);
         }
+    }
 
+    @Override
+    public Collection<Vehicle> findAllByIds(Collection<Long> vehicleIds) {
+        Connection connection = connectionPool.getConnection();
+        String sql = "SELECT V.id, V.brand, V.model, V.registration_number, V.color, V.vehicle_type, V.category_type, V.status, V.created\n" +
+                "FROM vehicles V\n" +
+                "WHERE V.id IN (?)";
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            Array array = preparedStatement.getConnection().createArrayOf("BIGINT", vehicleIds.toArray());
+            preparedStatement.setArray(1, array);
+            Collection<Vehicle> vehicles = new ArrayList<>();
+            ResultSet rs = preparedStatement.executeQuery();
+            if (rs.next()) {
+                vehicles.add(mapToVehicle(rs));
+            }
+            return vehicles;
+        } catch (SQLException e) {
+            return Collections.emptyList();
+        } finally {
+            connectionPool.releaseConnection(connection);
+        }
+    }
 
+    @Override
+    public void updateStatusByBookingId(VehicleStatus status, Long bookingId) {
+        Connection connection = connectionPool.getConnection();
+        String sql = "UPDATE vehicles SET status = ? WHERE id = ?";
+        try {
+            PreparedStatement ps = connection.prepareStatement(sql);
+            ps.setString(1, status.name());
+            ps.setLong(2, bookingId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            connectionPool.releaseConnection(connection);
+        }
     }
 
     private Vehicle mapToVehicle(ResultSet rs) throws SQLException {

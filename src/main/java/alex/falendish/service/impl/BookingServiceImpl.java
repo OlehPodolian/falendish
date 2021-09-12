@@ -7,20 +7,19 @@ import main.java.alex.falendish.dao.impl.JdbcBookingDAO;
 import main.java.alex.falendish.dao.impl.JdbcBookingRequestDAO;
 import main.java.alex.falendish.dao.impl.JdbcPromoCodeDAO;
 import main.java.alex.falendish.exception.InsufficientVehiclesNumberException;
-import main.java.alex.falendish.model.BookingRequest;
-import main.java.alex.falendish.model.Discount;
-import main.java.alex.falendish.model.Vehicle;
+import main.java.alex.falendish.model.*;
 import main.java.alex.falendish.service.BookingService;
 import main.java.alex.falendish.service.SchedulersService;
 import main.java.alex.falendish.service.UserService;
 import main.java.alex.falendish.service.VehicleService;
-import main.java.alex.falendish.model.Booking;
 import main.java.alex.falendish.utils.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static main.java.alex.falendish.utils.CommonUtils.*;
 
@@ -57,9 +56,9 @@ public class BookingServiceImpl implements BookingService {
                 }
             }
         }
-        Collection<Long> reservedVehicleIds = new HashSet<>();
-        reservedVehicleIds.addAll(vehicleService.reserveVehicles(primaryVehicles, bookingId, routePrice));
-        reservedVehicleIds.addAll(vehicleService.reserveVehicles(optionalVehicles, bookingId, routePrice));
+        Collection<Long> reservedVehicleIds = Stream.concat(primaryVehicles.stream(), optionalVehicles.stream())
+                .map(Vehicle::getId)
+                .collect(Collectors.toSet());
 
         BigDecimal totalCost = calculateTotalPrice(primaryVehicles, optionalVehicles, routePrice);
         Discount discount = calculateDiscount(request, totalCost);
@@ -68,7 +67,7 @@ public class BookingServiceImpl implements BookingService {
 
         schedulersService.scheduleUnconfirmedBookingCancellation(bookingId, reservedVehicleIds, AUTO_CANCELLATION_TIMEOUT);
 
-        return bookingDAO.create(new Booking(
+        Booking booking = bookingDAO.create(new Booking(
                 bookingId,
                 request.getUserId(),
                 request.getId(),
@@ -80,6 +79,9 @@ public class BookingServiceImpl implements BookingService {
                 discount.getDiscountType(),
                 request.getPromoCode(),
                 BookingStatus.OFFERED));
+        vehicleService.reserveVehicles(primaryVehicles, bookingId, routePrice);
+        vehicleService.reserveVehicles(optionalVehicles, bookingId, routePrice);
+        return booking;
     }
 
     @Override
@@ -98,6 +100,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public void startRide(Long bookingId) {
+        vehicleService.activateBillingOrders(bookingId);
         updateStatus(bookingId, BookingStatus.PROCESSING, VehicleStatus.RENTED);
     }
 

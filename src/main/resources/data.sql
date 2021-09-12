@@ -75,8 +75,21 @@ CREATE TABLE IF NOT EXISTS BOOKINGS_VEHICLES
 
 CREATE TABLE IF NOT EXISTS PROMO_CODES
 (
-    value     VARCHAR(10)   NOT NULL PRIMARY KEY,
-    percent   DECIMAL(5, 2) NOT NULL,
+    value      VARCHAR(10)   NOT NULL PRIMARY KEY,
+    percent    DECIMAL(5, 2) NOT NULL,
     valid_from DATE DEFAULT now(),
     valid_to   DATE DEFAULT now() + interval '10 day'
+);
+
+
+CREATE TABLE IF NOT EXISTS VEHICLE_BILLING_ORDERS
+(
+    id         BIGSERIAL NOT NULL PRIMARY KEY,
+    vehicle_id BIGINT    NOT NULL,
+    booking_id BIGINT    NOT NULL,
+    price      DECIMAL(5, 2),
+    status    VARCHAR(50) NOT NULL,
+    created    TIMESTAMP DEFAULT now(),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles (id) ON DELETE NO ACTION,
+    FOREIGN KEY (booking_id) REFERENCES bookings (id) ON DELETE NO ACTION
 );

@@ -49,7 +49,7 @@ public class SchedulersServiceImpl implements SchedulersService {
     private Runnable tryToCancelUnconfirmedBooking(Long bookingId, Collection<Long> reservedVehicleIds) {
         return () -> {
             bookingDAO.updateBookingStatus(BookingStatus.CANCELLED, bookingId);
-            vehicleService.tryToCancelUnconfirmedBookedVehicles(reservedVehicleIds);
+            vehicleService.updateStatusByIds(VehicleStatus.IDLE, reservedVehicleIds);
         };
     }
 }
